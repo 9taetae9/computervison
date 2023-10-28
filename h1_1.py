@@ -44,6 +44,8 @@ def determine_checkerboard_size(image_path):
 # Test
 img1 = 'check8_8.jpg'
 print(determine_checkerboard_size(img1))
+imt1 = 'check8_8_1.jpg'
+print(determine_checkerboard_size(img1))
 img1 = 'check8_8_2.jpg'
 print(determine_checkerboard_size(img1))
 img1 = 'check8_8_3.jpg'
