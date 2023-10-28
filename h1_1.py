@@ -1,34 +1,32 @@
 import cv2
 import numpy as np
 
-def determine_checkerboard_size(image_path):
-    # Read the image in grayscale
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        print("Failed to load image")
-        return 
+def determine_checkerboard_size(img):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Adaptive Thresholding
-    adaptive_thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                            cv2.THRESH_BINARY, 11, 2)
-    # Inverse since findChessboardCorners works better with white squares
-    inverse_adaptive = cv2.bitwise_not(adaptive_thresh)
+    # Apply GaussianBlur to reduce noise and improve contour detection
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    # Try to find the 10x10 checkerboard corners
-    ret_10x10, corners_10x10 = cv2.findChessboardCorners(inverse_adaptive, (9,9))
-    
-    # If 10x10 not found, try 8x8
-    if not ret_10x10:
-        ret_8x8, corners_8x8 = cv2.findChessboardCorners(inverse_adaptive, (7,7))
-        if ret_8x8:
-            print("8 x 8 (British/American rules)")
-            return 
-        else:
-            print("Checkerboard not recognized")
-            return 
+    # Apply thresholding to get a binary image
+    _, thresh = cv2.threshold(blur, 120, 255, cv2.THRESH_BINARY)
+
+    # Find the contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Filter out very small contours which are most likely noise
+    contours = [c for c in contours if cv2.contourArea(c) > 100]
+
+    if len(contours) >= 64:  # Expecting at least 64 squares for an 8x8 board
+        return "8 x 8 (British/American rules)"
+    elif len(contours) >= 100:  # Expecting at least 100 squares for a 10x10 board
+        return "10 x 10 (International rules)"
     else:
-        print("10 x 10 (International rules)")
+        return "Checkerboard not recognized"
 
-# Test
-determine_checkerboard_size('check8_8.jpg')
-determine_checkerboard_size('check10_10.jpg')
+# Test with your images
+img1 = cv2.imread('check8_8.jpg')
+print(determine_checkerboard_size(img1))
+
+img2 = cv2.imread('check10_10.jpg')
+print(determine_checkerboard_size(img2))
