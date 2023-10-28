@@ -1,32 +1,58 @@
 import cv2
 import numpy as np
 
-def determine_checkerboard_size(img):
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Apply GaussianBlur to reduce noise and improve contour detection
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Apply thresholding to get a binary image
-    _, thresh = cv2.threshold(blur, 120, 255, cv2.THRESH_BINARY)
-
-    # Find the contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Filter out very small contours which are most likely noise
-    contours = [c for c in contours if cv2.contourArea(c) > 100]
-
-    if len(contours) >= 64:  # Expecting at least 64 squares for an 8x8 board
+def determine_checkerboard_size(image_path):
+    # Read the image
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    
+    # Image enhancement using adaptive histogram equalization
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced_img = clahe.apply(img)
+    
+    # Thresholding
+    _, threshed = cv2.threshold(enhanced_img, 127, 255, cv2.THRESH_BINARY_INV)
+    
+    # Finding contours
+    contours, _ = cv2.findContours(threshed, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Assuming the largest contour (after a certain size) is the checkerboard
+    max_contour = max(contours, key=cv2.contourArea)
+    
+    # Applying perspective transform if the contour has 4 points (approximation)
+    if len(max_contour) == 4:
+        pts1 = np.array([max_contour[0], max_contour[1], max_contour[2], max_contour[3]], dtype="float32")
+        side = max(img.shape)
+        pts2 = np.array([[0, 0], [side - 1, 0], [side - 1, side - 1], [0, side - 1]], dtype="float32")
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        img = cv2.warpPerspective(img, matrix, (side, side))
+    
+    # Check for 8x8 checkerboard
+    pattern_size = (7, 7)
+    found, _ = cv2.findChessboardCorners(img, pattern_size)
+    if found:
         return "8 x 8 (British/American rules)"
-    elif len(contours) >= 100:  # Expecting at least 100 squares for a 10x10 board
+    
+    # Check for 10x10 checkerboard
+    pattern_size = (9, 9)
+    found, _ = cv2.findChessboardCorners(img, pattern_size)
+    if found:
         return "10 x 10 (International rules)"
-    else:
-        return "Checkerboard not recognized"
+    
+    return "Checkerboard not recognized"
 
-# Test with your images
-img1 = cv2.imread('check8_8.jpg')
+# Test your images using the function
+# Test
+img1 = 'check8_8.jpg'
+print(determine_checkerboard_size(img1))
+img1 = 'check8_8_2.jpg'
+print(determine_checkerboard_size(img1))
+img1 = 'check8_8_3.jpg'
 print(determine_checkerboard_size(img1))
 
-img2 = cv2.imread('check10_10.jpg')
+img2 = 'check10_10.jpg'
 print(determine_checkerboard_size(img2))
+img2 = 'check10_10_2.jpg'
+print(determine_checkerboard_size(img2))
+
+img3 = 'check12_12.jpg'
+print(determine_checkerboard_size(img3))
