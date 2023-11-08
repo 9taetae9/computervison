@@ -3,11 +3,22 @@ import numpy as np
 
 def determine_checkerboard_size(image_path):
     # Read the image
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    
+    # Convert to grayscale for processing
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Circle detection and removal
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp=1, minDist=30, param1=50, param2=30, minRadius=5, maxRadius=40)
+    if circles is not None:
+        circles = np.uint16(np.around(circles))
+        for i in circles[0,:]:
+            cv2.circle(gray, (i[0], i[1]), i[2], (127,127,127), -1)  # Overwrite circle with average checkerboard color
+
     
     # Image enhancement using adaptive histogram equalization
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    enhanced_img = clahe.apply(img)
+    enhanced_img = clahe.apply(gray)
     
     # Thresholding
     _, threshed = cv2.threshold(enhanced_img, 127, 255, cv2.THRESH_BINARY_INV)
@@ -39,22 +50,12 @@ def determine_checkerboard_size(image_path):
         return "10 x 10 (International rules)"
     
     return "Checkerboard not recognized"
+    
 
-# Test your images using the function
-# Test
-img1 = 'check8_8.jpg'
-print(determine_checkerboard_size(img1))
-imt1 = 'check8_8_1.jpg'
-print(determine_checkerboard_size(img1))
-img1 = 'check8_8_2.jpg'
-print(determine_checkerboard_size(img1))
-img1 = 'check8_8_3.jpg'
-print(determine_checkerboard_size(img1))
 
-img2 = 'check10_10.jpg'
-print(determine_checkerboard_size(img2))
-img2 = 'check10_10_2.jpg'
-print(determine_checkerboard_size(img2))
 
-img3 = 'check12_12.jpg'
-print(determine_checkerboard_size(img3))
+# Testing
+image_paths = ['check8_8_1.jpg', 'check8_8_2.jpg','check8_8_3.jpg',
+               'check10_10.jpg', 'check10_10_2.jpg','check12_12.jpg']  # replace with the paths to your images
+for path in image_paths:
+    print(determine_checkerboard_size(path))
